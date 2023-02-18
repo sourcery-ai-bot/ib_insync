@@ -348,8 +348,7 @@ class IB:
         """
         endTime = time.time() + timeout
         while True:
-            test = condition and condition()
-            if test:
+            if test := condition and condition():
                 yield test
                 return
             elif timeout and time.time() > endTime:
@@ -475,8 +474,7 @@ class IB:
 
     def orders(self) -> List[Order]:
         """List of all orders from this session."""
-        return list(
-            trade.order for trade in self.wrapper.trades.values())
+        return [trade.order for trade in self.wrapper.trades.values()]
 
     def openOrders(self) -> List[Order]:
         """List of all open orders."""
@@ -489,7 +487,7 @@ class IB:
 
     def executions(self) -> List[Execution]:
         """List of all executions from this session."""
-        return list(fill.execution for fill in self.wrapper.fills.values())
+        return [fill.execution for fill in self.wrapper.fills.values()]
 
     def ticker(self, contract: Contract) -> Optional[Ticker]:
         """
@@ -581,7 +579,7 @@ class IB:
             takeProfitPrice: Limit price of profit order.
             stopLossPrice: Stop price of loss order.
         """
-        assert action in ('BUY', 'SELL')
+        assert action in {'BUY', 'SELL'}
         reverseAction = 'BUY' if action == 'SELL' else 'SELL'
         parent = LimitOrder(
             action, quantity, limitPrice,
@@ -865,8 +863,7 @@ class IB:
             modelCode: If specified, cancel for this account model.
         """
         key = (account, modelCode)
-        reqId = self.wrapper.pnlKey2ReqId.pop(key, None)
-        if reqId:
+        if reqId := self.wrapper.pnlKey2ReqId.pop(key, None):
             self.client.cancelPnL(reqId)
             self.wrapper.reqId2PnL.pop(reqId, None)
         else:
@@ -910,8 +907,7 @@ class IB:
             conId: Cancel for this contract ID.
         """
         key = (account, modelCode, conId)
-        reqId = self.wrapper.pnlSingleKey2ReqId.pop(key, None)
-        if reqId:
+        if reqId := self.wrapper.pnlSingleKey2ReqId.pop(key, None):
             self.client.cancelPnLSingle(reqId)
             self.wrapper.reqId2PnlSingle.pop(reqId, None)
         else:
@@ -1666,7 +1662,7 @@ class IB:
             self, host: str = '127.0.0.1', port: int = 7497,
             clientId: int = 1, timeout: Optional[float] = 4,
             readonly: bool = False, account: str = ''):
-        clientId = int(clientId)
+        clientId = clientId
         self.wrapper.clientId = clientId
         timeout = timeout or None
         try:
@@ -1682,18 +1678,17 @@ class IB:
                 account = accounts[0]
 
             # prepare initializing requests
-            reqs: Dict = {}  # name -> request
-            reqs['positions'] = self.reqPositionsAsync()
+            reqs: Dict = {'positions': self.reqPositionsAsync()}
             if not readonly:
                 reqs['open orders'] = self.reqOpenOrdersAsync()
-            if not readonly and self.client.serverVersion() >= 150:
-                reqs['completed orders'] = self.reqCompletedOrdersAsync(False)
+                if self.client.serverVersion() >= 150:
+                    reqs['completed orders'] = self.reqCompletedOrdersAsync(False)
             if account:
                 reqs['account updates'] = self.reqAccountUpdatesAsync(account)
             if len(accounts) <= self.MaxSyncedSubAccounts:
                 for acc in accounts:
                     reqs[f'account updates for {acc}'] = \
-                        self.reqAccountUpdatesMultiAsync(acc)
+                            self.reqAccountUpdatesMultiAsync(acc)
 
             # run initializing requests concurrently and log if any times out
             tasks = [
@@ -1719,8 +1714,7 @@ class IB:
             raise
         return self
 
-    async def qualifyContractsAsync(self, *contracts: Contract) \
-            -> List[Contract]:
+    async def qualifyContractsAsync(self, *contracts: Contract) -> List[Contract]:
         detailsLists = await asyncio.gather(
             *(self.reqContractDetailsAsync(c) for c in contracts))
         result = []
@@ -1734,8 +1728,7 @@ class IB:
                     f'possibles are {possibles}')
             else:
                 c = detailsList[0].contract
-                expiry = c.lastTradeDateOrContractMonth
-                if expiry:
+                if expiry := c.lastTradeDateOrContractMonth:
                     # remove time and timezone part as it will cause problems
                     expiry = expiry.split()[0]
                     c.lastTradeDateOrContractMonth = expiry

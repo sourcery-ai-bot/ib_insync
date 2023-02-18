@@ -152,12 +152,7 @@ class Contract:
     def __hash__(self):
         if not self.isHashable():
             raise ValueError(f'Contract {self} can\'t be hashed')
-        if self.secType == 'CONTFUT':
-            # CONTFUT gets the same conId as the front contract, invert it here
-            h = -self.conId
-        else:
-            h = self.conId
-        return h
+        return -self.conId if self.secType == 'CONTFUT' else self.conId
 
     def __repr__(self):
         attrs = util.dataclassNonDefaults(self)
@@ -296,7 +291,7 @@ class Forex(Contract):
         if 'symbol' in attrs and 'currency' in attrs:
             pair = attrs.pop('symbol')
             pair += attrs.pop('currency')
-            s += "'" + pair + "'" + (", " if attrs else "")
+            s += f"'{pair}'" + (", " if attrs else "")
         s += ', '.join(f'{k}={v!r}' for k, v in attrs.items())
         s += ')'
         return s
@@ -523,14 +518,16 @@ class ContractDetails:
 
     def _parseSessions(self, s: str) -> List[TradingSession]:
         tz = util.ZoneInfo(self.timeZoneId)
-        sessions = []
-        for sess in s.split(';'):
-            if not sess or 'CLOSED' in sess:
-                continue
-            sessions.append(TradingSession(*[
-                dt.datetime.strptime(t, '%Y%m%d:%H%M').replace(tzinfo=tz)
-                for t in sess.split('-')]))
-        return sessions
+        return [
+            TradingSession(
+                *[
+                    dt.datetime.strptime(t, '%Y%m%d:%H%M').replace(tzinfo=tz)
+                    for t in sess.split('-')
+                ]
+            )
+            for sess in s.split(';')
+            if sess and 'CLOSED' not in sess
+        ]
 
 
 @dataclass

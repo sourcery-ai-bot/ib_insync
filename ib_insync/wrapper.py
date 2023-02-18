@@ -188,15 +188,9 @@ class Wrapper:
         self._reqId2Contract.pop(subscriber.reqId, None)
         self.reqId2Subscriber.pop(subscriber.reqId, None)
 
-    def orderKey(self, clientId: int, orderId: int, permId: int) -> \
-            OrderKeyType:
+    def orderKey(self, clientId: int, orderId: int, permId: int) -> OrderKeyType:
         key: OrderKeyType
-        if orderId <= 0:
-            # order is placed manually from TWS
-            key = permId
-        else:
-            key = (clientId, orderId)
-        return key
+        return permId if orderId <= 0 else (clientId, orderId)
 
     def setTimeout(self, timeout: float):
         self.lastTime = datetime.now(timezone.utc)
@@ -409,8 +403,7 @@ class Wrapper:
             lastFillPrice: float, clientId: int, whyHeld: str,
             mktCapPrice: float = 0.0):
         key = self.orderKey(clientId, orderId, permId)
-        trade = self.trades.get(key)
-        if trade:
+        if trade := self.trades.get(key):
             msg: Optional[str]
             oldStatus = trade.orderStatus.status
             new = dict(
@@ -495,21 +488,12 @@ class Wrapper:
             commissionReport.yield_ = 0.0
         if commissionReport.realizedPNL == UNSET_DOUBLE:
             commissionReport.realizedPNL = 0.0
-        fill = self.fills.get(commissionReport.execId)
-        if fill:
+        if fill := self.fills.get(commissionReport.execId):
             report = dataclassUpdate(fill.commissionReport, commissionReport)
             self._logger.info(f'commissionReport: {report}')
-            trade = self.permId2Trade.get(fill.execution.permId)
-            if trade:
+            if trade := self.permId2Trade.get(fill.execution.permId):
                 self.ib.commissionReportEvent.emit(trade, fill, report)
                 trade.commissionReportEvent.emit(trade, fill, report)
-            else:
-                # this is not a live execution and the order was filled
-                # before this connection started
-                pass
-        else:
-            # commission report is not for this client
-            pass
 
     def orderBound(self, reqId: int, apiClientId: int, apiOrderId: int):
         pass
@@ -531,8 +515,7 @@ class Wrapper:
         self._endReq(f'marketRule-{marketRuleId}', priceIncrements)
 
     def marketDataType(self, reqId: int, marketDataId: int):
-        ticker = self.reqId2Ticker.get(reqId)
-        if ticker:
+        if ticker := self.reqId2Ticker.get(reqId):
             ticker.marketDataType = marketDataId
 
     def realtimeBar(
@@ -612,7 +595,7 @@ class Wrapper:
             self._logger.error(f'priceSizeTick: Unknown reqId: {reqId}')
             return
         # https://interactivebrokers.github.io/tws-api/tick_types.html
-        if tickType in (1, 66):
+        if tickType in {1, 66}:
             if price == ticker.bid and size == ticker.bidSize:
                 return
             if price != ticker.bid:
@@ -621,7 +604,7 @@ class Wrapper:
             if size != ticker.bidSize:
                 ticker.prevBidSize = ticker.bidSize
                 ticker.bidSize = size
-        elif tickType in (2, 67):
+        elif tickType in {2, 67}:
             if price == ticker.ask and size == ticker.askSize:
                 return
             if price != ticker.ask:
@@ -630,20 +613,20 @@ class Wrapper:
             if size != ticker.askSize:
                 ticker.prevAskSize = ticker.askSize
                 ticker.askSize = size
-        elif tickType in (4, 68):
+        elif tickType in {4, 68}:
             if price != ticker.last:
                 ticker.prevLast = ticker.last
                 ticker.last = price
             if size != ticker.lastSize:
                 ticker.prevLastSize = ticker.lastSize
                 ticker.lastSize = size
-        elif tickType in (6, 72):
+        elif tickType in {6, 72}:
             ticker.high = price
-        elif tickType in (7, 73):
+        elif tickType in {7, 73}:
             ticker.low = price
-        elif tickType in (9, 75):
+        elif tickType in {9, 75}:
             ticker.close = price
-        elif tickType in (14, 76):
+        elif tickType in {14, 76}:
             ticker.open = price
         elif tickType == 15:
             ticker.low13week = price
@@ -679,26 +662,26 @@ class Wrapper:
             return
         price = -1.0
         # https://interactivebrokers.github.io/tws-api/tick_types.html
-        if tickType in (0, 69):
+        if tickType in {0, 69}:
             if size == ticker.bidSize:
                 return
             price = ticker.bid
             ticker.prevBidSize = ticker.bidSize
             ticker.bidSize = size
-        elif tickType in (3, 70):
+        elif tickType in {3, 70}:
             if size == ticker.askSize:
                 return
             price = ticker.ask
             ticker.prevAskSize = ticker.askSize
             ticker.askSize = size
-        elif tickType in (5, 71):
+        elif tickType in {5, 71}:
             price = ticker.last
             if isNan(price):
                 return
             if size != ticker.lastSize:
                 ticker.prevLastSize = ticker.lastSize
                 ticker.lastSize = size
-        elif tickType in (8, 74):
+        elif tickType in {8, 74}:
             ticker.volume = size
         elif tickType == 21:
             ticker.avVolume = size
@@ -807,7 +790,7 @@ class Wrapper:
                         d[k] = float(v)                   # type: ignore
                         d[k] = int(v)                     # type: ignore
                 ticker.fundamentalRatios = FundamentalRatios(**d)
-            elif tickType in (48, 77):
+            elif tickType in {48, 77}:
                 # RT Volume or RT Trade Volume string format:
                 # price;size;ms since epoch;total volume;VWAP;single trade
                 # example:
@@ -857,7 +840,7 @@ class Wrapper:
         if not ticker:
             return
         try:
-            value = float(value)
+            value = value
         except ValueError:
             self._logger.error(f'genericTick: malformed value: {value!r}')
             return
@@ -941,17 +924,16 @@ class Wrapper:
             vega if vega != -2 else vega,
             theta if theta != -2 else theta,
             undPrice if undPrice != -1 else None)
-        ticker = self.reqId2Ticker.get(reqId)
-        if ticker:
+        if ticker := self.reqId2Ticker.get(reqId):
             # reply from reqMktData
             # https://interactivebrokers.github.io/tws-api/tick_types.html
-            if tickType in (10, 80):
+            if tickType in {10, 80}:
                 ticker.bidGreeks = comp
-            elif tickType in (11, 81):
+            elif tickType in {11, 81}:
                 ticker.askGreeks = comp
-            elif tickType in (12, 82):
+            elif tickType in {12, 82}:
                 ticker.lastGreeks = comp
-            elif tickType in (13, 83):
+            elif tickType in {13, 83}:
                 ticker.modelGreeks = comp
             self.pendingTickers.add(ticker)
         elif reqId in self._futures:
@@ -1123,15 +1105,11 @@ class Wrapper:
                     trade.cancelledEvent.emit(trade)
 
         if errorCode == 165:
-            # for scan data subscription there are no longer matching results
-            dataList = self.reqId2Subscriber.get(reqId)
-            if dataList:
+            if dataList := self.reqId2Subscriber.get(reqId):
                 dataList.clear()
                 dataList.updateEvent.emit(dataList)
         elif errorCode == 317:
-            # Market depth data has been RESET
-            ticker = self.reqId2Ticker.get(reqId)
-            if ticker:
+            if ticker := self.reqId2Ticker.get(reqId):
                 # clear all DOM levels
                 ticker.domTicks += [MktDepthData(
                     self.lastTime, 0, '', 2, 0, level.price, 0)

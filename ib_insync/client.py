@@ -291,11 +291,10 @@ class Client:
             loop.call_at(
                 times[0] + self.RequestsInterval,
                 self.sendMsg, None)
-        else:
-            if self._isThrottling:
-                self._isThrottling = False
-                self.throttleEnd.emit()
-                self._logger.debug('Stopped to throttle requests')
+        elif self._isThrottling:
+            self._isThrottling = False
+            self.throttleEnd.emit()
+            self._logger.debug('Stopped to throttle requests')
 
     def _prefix(self, msg):
         # prefix a message with its length
@@ -309,9 +308,7 @@ class Client:
         self._data += data
         self._numBytesRecv += len(data)
 
-        while True:
-            if len(self._data) <= 4:
-                break
+        while len(self._data) > 4:
             # 4 byte prefix tells the message length
             msgEnd = 4 + struct.unpack('>I', self._data[:4])[0]
             if len(self._data) < msgEnd:
@@ -345,13 +342,13 @@ class Client:
                     # snoop for nextValidId and managedAccounts response,
                     # when both are in then the client is ready
                     msgId = int(fields[0])
-                    if msgId == 9:
+                    if msgId == 15:
+                        _, _, accts = fields
+                        self._accounts = [a for a in accts.split(',') if a]
+                    elif msgId == 9:
                         _, _, validId = fields
                         self.updateReqId(int(validId))
                         self._hasReqId = True
-                    elif msgId == 15:
-                        _, _, accts = fields
-                        self._accounts = [a for a in accts.split(',') if a]
                     if self._hasReqId and self._accounts:
                         self._apiReady = True
                         self.apiStart.emit()
@@ -394,8 +391,7 @@ class Client:
             for leg in legs:
                 fields += [leg.conId, leg.ratio, leg.action, leg.exchange]
 
-        dnc = contract.deltaNeutralContract
-        if dnc:
+        if dnc := contract.deltaNeutralContract:
             fields += [True, dnc.conId, dnc.delta, dnc.price]
         else:
             fields += [False]
@@ -537,8 +533,7 @@ class Client:
             order.clearingIntent,
             order.notHeld]
 
-        dnc = contract.deltaNeutralContract
-        if dnc:
+        if dnc := contract.deltaNeutralContract:
             fields += [True, dnc.conId, dnc.delta, dnc.price]
         else:
             fields += [False]

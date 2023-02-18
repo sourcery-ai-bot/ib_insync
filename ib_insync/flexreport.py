@@ -41,7 +41,7 @@ class FlexReport:
 
     def topics(self):
         """Get the set of topics that can be extracted from this report."""
-        return set(node.tag for node in self.root.iter() if node.attrib)
+        return {node.tag for node in self.root.iter() if node.attrib}
 
     def extract(self, topic: str, parseNumbers=True) -> list:
         """
@@ -99,11 +99,12 @@ class FlexReport:
             self.root = et.fromstring(self.data)
             if self.root[0].tag == 'code':
                 msg = self.root[0].text
-                if msg and msg.startswith('Statement generation in progress'):
-                    _logger.info('still working...')
-                    continue
-                else:
+                if not msg or not msg.startswith(
+                    'Statement generation in progress'
+                ):
                     raise FlexError(msg)
+                _logger.info('still working...')
+                continue
             break
         _logger.info('Statement retrieved.')
 

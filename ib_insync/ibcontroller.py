@@ -100,7 +100,7 @@ class IBC:
     def __post_init__(self):
         self._isWindows = sys.platform == 'win32'
         if not self.ibcPath:
-            self.ibcPath = '/opt/ibc' if not self._isWindows else 'C:\\IBC'
+            self.ibcPath = 'C:\\IBC' if self._isWindows else '/opt/ibc'
         self._proc = None
         self._monitor = None
         self._logger = logging.getLogger('ib_insync.IBC')

@@ -148,13 +148,9 @@ class Ticker:
         * average of bid and ask (midpoint).
         """
         if self.hasBidAsk():
-            if self.bid <= self.last <= self.ask:
-                price = self.last
-            else:
-                price = self.midpoint()
+            return self.last if self.bid <= self.last <= self.ask else self.midpoint()
         else:
-            price = self.last
-        return price
+            return self.last
 
 
 class TickerUpdateEvent(Event):

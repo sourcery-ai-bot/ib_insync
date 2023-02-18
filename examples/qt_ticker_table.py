@@ -71,8 +71,7 @@ class Window(qt.QWidget):
         self.ib.pendingTickersEvent += self.table.onPendingTickers
 
     def add(self, text=''):
-        text = text or self.edit.text()
-        if text:
+        if text := text or self.edit.text():
             contract = eval(text)
             if (contract and self.ib.qualifyContracts(contract)
                     and contract not in self.table):

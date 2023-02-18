@@ -51,8 +51,7 @@ def df(objs, labels: Optional[List[str]] = None):
         else:
             df = pd.DataFrame.from_records(objs)
         if isinstance(obj, tuple):
-            _fields = getattr(obj, '_fields', None)
-            if _fields:
+            if _fields := getattr(obj, '_fields', None):
                 # assume it's a namedtuple
                 df.columns = _fields
     else:
@@ -129,9 +128,7 @@ def isnamedtupleinstance(x):
     if len(b) != 1 or b[0] != tuple:
         return False
     f = getattr(t, '_fields', None)
-    if not isinstance(f, tuple):
-        return False
-    return all(type(n) == str for n in f)
+    return all(type(n) == str for n in f) if isinstance(f, tuple) else False
 
 
 def tree(obj):
@@ -262,7 +259,7 @@ def formatSI(n: float) -> str:
         n = -n
         s += '-'
     if type(n) is int and n < 1000:
-        s = str(n) + ' '
+        s = f'{str(n)} '
     elif n < 1e-22:
         s = '0.00 '
     else:
@@ -270,13 +267,13 @@ def formatSI(n: float) -> str:
         log = int(math.floor(math.log10(n)))
         i, j = divmod(log, 3)
         for _try in range(2):
-            templ = '%.{}f'.format(2 - j)
+            templ = f'%.{2 - j}f'
             val = templ % (n * 10 ** (-3 * i))
             if val != '1000':
                 break
             i += 1
             j = 0
-        s += val + ' '
+        s += f'{val} '
         if i != 0:
             s += 'yzafpnum kMGTPEZY'[i + 8]
     return s
@@ -292,7 +289,7 @@ class timeit:
         self.t0 = time.time()
 
     def __exit__(self, *_args):
-        print(self.title + ' took ' + formatSI(time.time() - self.t0) + 's')
+        print(f'{self.title} took {formatSI(time.time() - self.t0)}s')
 
 
 def run(*awaitables: Awaitable, timeout: Optional[float] = None):
@@ -325,10 +322,7 @@ def run(*awaitables: Awaitable, timeout: Optional[float] = None):
             except asyncio.CancelledError:
                 pass
     else:
-        if len(awaitables) == 1:
-            future = awaitables[0]
-        else:
-            future = asyncio.gather(*awaitables)
+        future = awaitables[0] if len(awaitables) == 1 else asyncio.gather(*awaitables)
         if timeout:
             future = asyncio.wait_for(future, timeout)
         task = asyncio.ensure_future(future)
@@ -348,12 +342,11 @@ def run(*awaitables: Awaitable, timeout: Optional[float] = None):
 
 
 def _fillDate(time: Time_t) -> dt.datetime:
-    # use today if date is absent
-    if isinstance(time, dt.time):
-        t = dt.datetime.combine(dt.date.today(), time)
-    else:
-        t = time
-    return t
+    return (
+        dt.datetime.combine(dt.date.today(), time)
+        if isinstance(time, dt.time)
+        else time
+    )
 
 
 def schedule(time: Time_t, callback: Callable, *args):
@@ -499,8 +492,8 @@ def useQt(qtLib: str = 'PyQt5', period: float = 0.01):
     if qtLib not in ('PyQt5', 'PyQt6', 'PySide2', 'PySide6'):
         raise RuntimeError(f'Unknown Qt library: {qtLib}')
     from importlib import import_module
-    qc = import_module(qtLib + '.QtCore')
-    qw = import_module(qtLib + '.QtWidgets')
+    qc = import_module(f'{qtLib}.QtCore')
+    qw = import_module(f'{qtLib}.QtWidgets')
     global qApp
     qApp = (qw.QApplication.instance()     # type: ignore
             or qw.QApplication(sys.argv))  # type: ignore
@@ -512,25 +505,24 @@ def useQt(qtLib: str = 'PyQt5', period: float = 0.01):
 def formatIBDatetime(t: Union[dt.date, dt.datetime, str, None]) -> str:
     """Format date or datetime to string that IB uses."""
     if not t:
-        s = ''
+        return ''
     elif isinstance(t, dt.datetime):
         # convert to UTC timezone
         t = t.astimezone(tz=dt.timezone.utc)
-        s = t.strftime('%Y%m%d %H:%M:%S UTC')
+        return t.strftime('%Y%m%d %H:%M:%S UTC')
     elif isinstance(t, dt.date):
         t = dt.datetime(
             t.year, t.month, t.day, 23, 59, 59).astimezone(tz=dt.timezone.utc)
-        s = t.strftime('%Y%m%d %H:%M:%S UTC')
+        return t.strftime('%Y%m%d %H:%M:%S UTC')
     else:
-        s = t
-    return s
+        return t
 
 
 def parseIBDatetime(s: str) -> Union[dt.date, dt.datetime]:
     """Parse string in IB date or datetime format to datetime."""
     if len(s) == 8:
         # YYYYmmdd
-        y = int(s[0:4])
+        y = int(s[:4])
         m = int(s[4:6])
         d = int(s[6:8])
         t = dt.date(y, m, d)

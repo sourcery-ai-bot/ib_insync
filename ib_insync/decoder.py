@@ -446,8 +446,7 @@ class Decoder:
         self.parse(ex)
         time = cast(datetime, parseIBDatetime(timeStr))
         if not time.tzinfo:
-            tz = self.wrapper.ib.TimezoneTWS
-            if tz:
+            if tz := self.wrapper.ib.TimezoneTWS:
                 time = time.replace(tzinfo=ZoneInfo(str(tz)))
         ex.time = time.astimezone(timezone.utc)
         self.wrapper.execDetails(int(reqId), c, ex)
@@ -788,7 +787,7 @@ class Decoder:
         tickType = int(tickType)
         time = int(time)
 
-        if tickType in (1, 2):
+        if tickType in {1, 2}:
             price, size, mask, exchange, specialConditions = fields
             mask = int(mask)
             attrib: Any = TickAttribLast(
